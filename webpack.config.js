@@ -4,10 +4,10 @@ const path = require('path');
 const config = {
   entry: './public/assets/js/index.js',
   output: {
-    path: __dirname + 'public/dist',
+    path: __dirname + '/public/dist',
     filename: 'bundle.js',
   },
-  mode: 'development',
+  mode: 'production',
   module: {
     rules: [
       {
@@ -26,6 +26,7 @@ const config = {
     new WebpackPwaManifest({
       inject: false,
       fingerprints: false,
+      filename: "manifest.json",
       name: 'Budget tracker',
       short_name: 'Budget tracker',
       description: 'An application that allows you to track budget even in offline mode',
@@ -36,7 +37,7 @@ const config = {
       display: 'standalone',
       icons: [
         {
-          src: path.resolve('public/assets/images/icons/icon-512x512.png'),
+          src: path.resolve(__dirname, 'public/assets/images/icons/icon-512x512.png'),
           sizes: [96, 128, 192, 256, 384, 512],
           destination: path.join('assets', 'icons'),
         },
