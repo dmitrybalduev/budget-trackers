@@ -1,18 +1,23 @@
 const request = window.indexedDB.open("transactionsDB", 1);
 let db;
 
-request.onupgradeneeded = event => {
-    db = event.target.result;
-    
-    // Creates an object store with a listID keypath that can be used to query on.
-    const toDoListStore = db.createObjectStore("transactionsStore", { autoIncrement: true });
-    // Creates a statusIndex that we can query on.
-    toDoListStore.createIndex("statusIndex", "status"); 
-    console.log('indexedDB upgraded');
+request.onupgradeneeded = e => {
+    console.log('Upgrade needed in IndexDB');
+
+    const { oldVersion } = e;
+    const newVersion = e.newVersion || db.version;
+  
+    console.log(`DB Updated from version ${oldVersion} to ${newVersion}`);
+  
+    db = e.target.result;
+  
+    if (db.objectStoreNames.length === 0) {
+      db.createObjectStore('BudgetStore', { autoIncrement: true });
+    }
 }
 
 request.onerror = function(event) {
-    console.log("Why didn't you allow my web app to use IndexedDB?!");
+    console.log(`Woops! ${event.target.errorCode}`);
 };
 
 request.onsuccess = function (event) {
@@ -23,9 +28,55 @@ request.onsuccess = function (event) {
 //exporting function that will be called in index.js in catch block if request to save data is not successfull
 export function saveRecord(expense) {
     
-    const transaction = db.transaction("transactionsStore", 'readwrite');
+    const transaction = db.transaction(["transactionsStore"], 'readwrite');
     const transactionStore = transaction.objectStore("transactionsStore");
 
     store.add(expense);
     console.log('Saved record to indexedDB!');
 }
+
+function checkDatabase() {
+    console.log('check db invoked');
+  
+    // Open a transaction on your BudgetStore db
+    let transaction = db.transaction(['transactionsStore'], 'readwrite');
+  
+    // access your BudgetStore object
+    const store = transaction.objectStore('transactionsStore');
+  
+    // Get all records from store and set to a variable
+    const getAll = store.getAll();
+  
+    // If the request was successful
+    getAll.onsuccess = function () {
+      // If there are items in the store, we need to bulk add them when we are back online
+      if (getAll.result.length > 0) {
+        fetch('/api/transaction/bulk', {
+          method: 'POST',
+          body: JSON.stringify(getAll.result),
+          headers: {
+            Accept: 'application/json, text/plain, */*',
+            'Content-Type': 'application/json',
+          },
+        })
+          .then((response) => response.json())
+          .then((res) => {
+            // If our returned response is not empty
+            if (res.length !== 0) {
+              // Open another transaction to BudgetStore with the ability to read and write
+              transaction = db.transaction(['transactionsStore'], 'readwrite');
+  
+              // Assign the current store to a variable
+              const currentStore = transaction.objectStore('BudgetStore');
+  
+              // Clear existing entries because our bulk add was successful
+              currentStore.clear();
+              console.log('Clearing store 🧹');
+            }
+          });
+      }
+    };
+  }
+
+  // Listen for app coming back online
+window.addEventListener('online', checkDatabase);
