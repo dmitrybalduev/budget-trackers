@@ -1,5 +1,6 @@
-const request = window.indexedDB.open("transactionsDB", 1);
 let db;
+let dbVersion;
+const request = window.indexedDB.open("transactionsDB", dbVersion || 21);
 
 request.onupgradeneeded = e => {
     console.log('Upgrade needed in IndexDB');
@@ -12,12 +13,12 @@ request.onupgradeneeded = e => {
     db = e.target.result;
   
     if (db.objectStoreNames.length === 0) {
-      db.createObjectStore('BudgetStore', { autoIncrement: true });
+      db.createObjectStore('transactionsStore', { autoIncrement: true });
     }
 }
 
 request.onerror = function(event) {
-    console.log(`Woops! ${event.target.errorCode}`);
+    console.log(`ERROR! ${event.target.errorCode}`);
 };
 
 request.onsuccess = function (event) {
@@ -29,7 +30,7 @@ request.onsuccess = function (event) {
 export function saveRecord(expense) {
     
     const transaction = db.transaction(["transactionsStore"], 'readwrite');
-    const transactionStore = transaction.objectStore("transactionsStore");
+    const store = transaction.objectStore("transactionsStore");
 
     store.add(expense);
     console.log('Saved record to indexedDB!');
@@ -67,7 +68,7 @@ function checkDatabase() {
               transaction = db.transaction(['transactionsStore'], 'readwrite');
   
               // Assign the current store to a variable
-              const currentStore = transaction.objectStore('BudgetStore');
+              const currentStore = transaction.objectStore('transactionsStore');
   
               // Clear existing entries because our bulk add was successful
               currentStore.clear();
