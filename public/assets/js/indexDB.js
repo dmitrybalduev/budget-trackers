@@ -3,7 +3,6 @@ let dbVersion;
 const request = window.indexedDB.open("transactionsDB", dbVersion || 21);
 
 request.onupgradeneeded = e => {
-    console.log('Upgrade needed in IndexDB');
 
     const { oldVersion } = e;
     const newVersion = e.newVersion || db.version;
@@ -23,10 +22,8 @@ request.onerror = function(event) {
 
 request.onsuccess = function (event) {
     db = event.target.result;
-    console.log('Connection to indexedDB is successfull!');
 };
 
-//exporting function that will be called in index.js in catch block if request to save data is not successfull
 export function saveRecord(expense) {
     
     const transaction = db.transaction(["transactionsStore"], 'readwrite');
@@ -37,20 +34,13 @@ export function saveRecord(expense) {
 }
 
 function checkDatabase() {
-    console.log('check db invoked');
-  
-    // Open a transaction on your BudgetStore db
     let transaction = db.transaction(['transactionsStore'], 'readwrite');
   
-    // access your BudgetStore object
     const store = transaction.objectStore('transactionsStore');
   
-    // Get all records from store and set to a variable
     const getAll = store.getAll();
   
-    // If the request was successful
     getAll.onsuccess = function () {
-      // If there are items in the store, we need to bulk add them when we are back online
       if (getAll.result.length > 0) {
         fetch('/api/transaction/bulk', {
           method: 'POST',
@@ -62,22 +52,16 @@ function checkDatabase() {
         })
           .then((response) => response.json())
           .then((res) => {
-            // If our returned response is not empty
             if (res.length !== 0) {
-              // Open another transaction to BudgetStore with the ability to read and write
               transaction = db.transaction(['transactionsStore'], 'readwrite');
   
-              // Assign the current store to a variable
               const currentStore = transaction.objectStore('transactionsStore');
   
-              // Clear existing entries because our bulk add was successful
               currentStore.clear();
-              console.log('Clearing store 🧹');
             }
           });
       }
     };
   }
 
-  // Listen for app coming back online
 window.addEventListener('online', checkDatabase);
